@@ -225,12 +225,12 @@
 	.word	0x41600021 | (\reg << 16)
 	.endm
 
-	.macro	MFTR	rt=0, rd=0, u=0, sel=0
-	 .word	0x41000000 | (\rt << 16) | (\rd << 11) | (\u << 5) | (\sel)
+	.macro	MFTR	rt=0, rd=0, _u=0, sel=0
+	 .word	0x41000000 | (\rt << 16) | (\rd << 11) | (\_u << 5) | (\sel)
 	.endm
 
-	.macro	MTTR	rt=0, rd=0, u=0, sel=0
-	 .word	0x41800000 | (\rt << 16) | (\rd << 11) | (\u << 5) | (\sel)
+	.macro	MTTR	rt=0, rd=0, _u=0, sel=0
+	 .word	0x41800000 | (\rt << 16) | (\rd << 11) | (\_u << 5) | (\sel)
 	.endm
 
 #ifdef TOOLCHAIN_SUPPORTS_MSA
