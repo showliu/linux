@@ -1071,7 +1071,7 @@ union mips_instruction {
 };
 
 union mips16e_instruction {
-	unsigned int full : 16;
+	unsigned short full;
 	struct m16e_rr rr;
 	struct m16e_jal jal;
 	struct m16e_i64 i64;
