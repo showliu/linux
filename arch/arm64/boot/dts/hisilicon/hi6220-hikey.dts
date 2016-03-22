@@ -531,6 +531,11 @@
 
 		simple-audio-card,codec {
 			sound-dai = <&adv7533>;
+
+	firmware {
+		optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
 		};
 	};
 };
