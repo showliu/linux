@@ -675,6 +675,95 @@ static sector_t raid10_find_virt(struct r10conf *conf, sector_t sector, int dev)
 	return (vchunk << geo->chunk_shift) + offset;
 }
 
+/**
+ *	raid10_mergeable_bvec -- tell bio layer if a two requests can be merged
+ *	@q: request queue
+ *	@bvm: properties of new bio
+ *	@biovec: the request that could be merged to it.
+ *
+ *	Return amount of bytes we can accept at this offset
+ *	This requires checking for end-of-chunk if near_copies != raid_disks,
+ *	and for subordinate merge_bvec_fns if merge_check_needed.
+ */
+static int raid10_mergeable_bvec(struct request_queue *q,
+				 struct bvec_merge_data *bvm,
+				 struct bio_vec *biovec)
+{
+	struct mddev *mddev = q->queuedata;
+	struct r10conf *conf = mddev->private;
+	sector_t sector = bvm->bi_sector + get_start_sect(bvm->bi_bdev);
+	int max;
+	unsigned int chunk_sectors;
+	unsigned int bio_sectors = bvm->bi_size >> 9;
+	struct geom *geo = &conf->geo;
+
+	chunk_sectors = (conf->geo.chunk_mask & conf->prev.chunk_mask) + 1;
+	if (conf->reshape_progress != MaxSector &&
+	    ((sector >= conf->reshape_progress) !=
+	     conf->mddev->reshape_backwards))
+		geo = &conf->prev;
+
+	if (geo->near_copies < geo->raid_disks) {
+		max = (chunk_sectors - ((sector & (chunk_sectors - 1))
+					+ bio_sectors)) << 9;
+		if (max < 0)
+			/* bio_add cannot handle a negative return */
+			max = 0;
+		if (max <= biovec->bv_len && bio_sectors == 0)
+			return biovec->bv_len;
+	} else
+		max = biovec->bv_len;
+
+	if (mddev->merge_check_needed) {
+		struct r10bio *r10_bio;
+		int s;
+		if (conf->reshape_progress != MaxSector) {
+			/* Cannot give any guidance during reshape */
+			if (max <= biovec->bv_len && bio_sectors == 0)
+				return biovec->bv_len;
+			return 0;
+		}
+		r10_bio = kmalloc(sizeof *r10_bio +
+				  conf->copies * sizeof(struct r10dev), GFP_NOIO);
+		if (!r10_bio)
+			return 0;
+		r10_bio->sector = sector;
+		raid10_find_phys(conf, r10_bio);
+		rcu_read_lock();
+		for (s = 0; s < conf->copies; s++) {
+			int disk = r10_bio->devs[s].devnum;
+			struct md_rdev *rdev = rcu_dereference(
+				conf->mirrors[disk].rdev);
+			if (rdev && !test_bit(Faulty, &rdev->flags)) {
+				struct request_queue *q =
+					bdev_get_queue(rdev->bdev);
+				if (q->merge_bvec_fn) {
+					bvm->bi_sector = r10_bio->devs[s].addr
+						+ rdev->data_offset;
+					bvm->bi_bdev = rdev->bdev;
+					max = min(max, q->merge_bvec_fn(
+							  q, bvm, biovec));
+				}
+			}
+			rdev = rcu_dereference(conf->mirrors[disk].replacement);
+			if (rdev && !test_bit(Faulty, &rdev->flags)) {
+				struct request_queue *q =
+					bdev_get_queue(rdev->bdev);
+				if (q->merge_bvec_fn) {
+					bvm->bi_sector = r10_bio->devs[s].addr
+						+ rdev->data_offset;
+					bvm->bi_bdev = rdev->bdev;
+					max = min(max, q->merge_bvec_fn(
+							  q, bvm, biovec));
+				}
+			}
+		}
+		rcu_read_unlock();
+		kfree(r10_bio);
+	}
+	return max;
+}
+
 /*
  * This routine returns the disk from which the requested read should
  * be done. There is a per-array 'next expected sequential IO' sector
@@ -4556,15 +4645,16 @@ static int handle_reshape_read_error(struct mddev *mddev,
 	/* Use sync reads to get the blocks from somewhere else */
 	int sectors = r10_bio->sectors;
 	struct r10conf *conf = mddev->private;
-	struct {
-		struct r10bio r10_bio;
-		struct r10dev devs[conf->copies];
-	} on_stack;
-	struct r10bio *r10b = &on_stack.r10_bio;
+	struct r10bio *r10b;
+
 	int slot = 0;
 	int idx = 0;
 	struct bio_vec *bvec = r10_bio->master_bio->bi_io_vec;
 
+	r10b = kmalloc(sizeof *r10b + conf->copies * sizeof(struct r10dev),
+		       GFP_NOIO);
+	if (!r10b)
+		return -ENOMEM;
 	r10b->sector = r10_bio->sector;
 	__raid10_find_phys(&conf->prev, r10b);
 
@@ -4610,11 +4700,13 @@ static int handle_reshape_read_error(struct mddev *mddev,
 			/* couldn't read this block, must give up */
 			set_bit(MD_RECOVERY_INTR,
 				&mddev->recovery);
+			kfree(r10b);
 			return -EIO;
 		}
 		sectors -= s;
 		idx++;
 	}
+	kfree(r10b);
 	return 0;
 }
 
