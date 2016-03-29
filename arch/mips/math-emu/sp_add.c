@@ -151,6 +151,8 @@ union ieee754sp ieee754sp_add(union ieee754sp x, union ieee754sp y)
 		 * leaving result in xm, xs and xe.
 		 */
 		xm = xm + ym;
+		/* xe does not change */
+		/* xs does not change */
 
 		if (xm >> (SP_FBITS + 1 + 3)) { /* carry out */
 			SPXSRSX1();
@@ -158,8 +160,11 @@ union ieee754sp ieee754sp_add(union ieee754sp x, union ieee754sp y)
 	} else {
 		if (xm >= ym) {
 			xm = xm - ym;
+			/* xe does not change */
+			/* xs does not change */
 		} else {
 			xm = ym - xm;
+			/* xe does not change */
 			xs = ys;
 		}
 		if (xm == 0)
