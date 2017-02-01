@@ -211,7 +211,7 @@
 
 #endif /* GCC_VERSION >= 40500 */
 
-#if GCC_VERSION >= 40600
+#if GCC_VERSION >= 40600 && !defined(__clang__)
 /*
  * When used with Link Time Optimization, gcc can optimize away C functions or
  * variables which are referenced only from assembly code.  __visible tells the
