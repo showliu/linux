@@ -240,11 +240,6 @@ struct ion_heap *ion_unmapped_heap_create(struct ion_platform_heap *pheap)
 	umh->heap.ops = &unmapped_heap_ops;
 	umh->heap.type = ION_HEAP_TYPE_UNMAPPED;
 
-	// TODO: move this out (or the debug)
-	pr_err("created a UNMAPPED heap %s of type %d with %lx@%lx\n",
-		pheap->name, pheap->type,
-		pheap->base, (unsigned long)pheap->size);
-
 	return &umh->heap;
 }
 EXPORT_SYMBOL(ion_unmapped_heap_create);
