@@ -539,12 +539,6 @@
 		};
 	};
 
-	firmware {
-		optee {
-			compatible = "linaro,optee-tz";
-			method = "smc";
-		};
-	};
 };
 
 &uart2 {
