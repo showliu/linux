@@ -49,7 +49,7 @@ config ION_HISI
 
 config ION_UNMAPPED_HEAP
 	bool "unmapped heap support in ION"
-	depends on ION && ARM
+	depends on ION
 	default y
 	help
 	  ION unmapped heap is not available on some architectures.
