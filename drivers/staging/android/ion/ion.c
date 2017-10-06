@@ -47,29 +47,6 @@
 #include "compat_ion.h"
 
 /**
- * struct ion_device - the metadata of the ion device node
- * @dev:		the actual misc device
- * @buffers:		an rb tree of all the existing buffers
- * @buffer_lock:	lock protecting the tree of buffers
- * @lock:		rwsem protecting the tree of heaps and clients
- * @heaps:		list of all the heaps in the system
- * @user_clients:	list of all the clients created from userspace
- */
-struct ion_device {
-	struct miscdevice dev;
-	struct rb_root buffers;
-	struct mutex buffer_lock;
-	struct rw_semaphore lock;
-	struct plist_head heaps;
-	long (*custom_ioctl)(struct ion_client *client, unsigned int cmd,
-			     unsigned long arg);
-	struct rb_root clients;
-	struct dentry *debug_root;
-	struct dentry *heaps_debug_root;
-	struct dentry *clients_debug_root;
-};
-
-/**
  * struct ion_client - a process/hw block local address space
  * @node:		node in the tree of all clients
  * @dev:		backpointer to ion device
