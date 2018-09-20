@@ -116,6 +116,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-tve1030g-avb.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-tve1205g.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-videostrong-linux.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-vr-android.dtb
+<<<<<<< HEAD
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-evb-lp4-v11-avb.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-evb-lp4-v11-linux.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-evb-v10.dtb
@@ -129,6 +130,12 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-evb-v13-multi-cam-avb.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-evb-v13-multi-cam.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-npu-evb-v10.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-npu-evb-v10-multi-cam.dtb
+=======
+dtb-$(CONFIG_ARCH_ROCKCHIP) += ficus-linux.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rock960-model-ab-linux.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rock960-model-c-linux.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rockpi-4b-linux.dtb
+>>>>>>> c0635d1c6beb... add rockpi 4b device tree
 
 always		:= $(dtb-y)
 subdir-y	:= $(dts-dirs)
