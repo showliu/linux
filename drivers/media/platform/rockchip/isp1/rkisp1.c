@@ -153,7 +153,7 @@ static int rkisp1_config_isp(struct rkisp1_device *dev)
 		}
 	} else if (in_fmt->fmt_type == FMT_YUV) {
 		acq_mult = 2;
-		if (sensor->mbus.type == V4L2_MBUS_CSI2) {
+		if (sensor->mbus.type == V4L2_MBUS_CSI2_DPHY) {
 			isp_ctrl = CIF_ISP_CTRL_ISP_MODE_ITU601;
 		} else {
 			if (sensor->mbus.type == V4L2_MBUS_BT656)
@@ -313,7 +313,7 @@ static int rkisp1_config_path(struct rkisp1_device *dev)
 	    sensor->mbus.type == V4L2_MBUS_PARALLEL) {
 		ret = rkisp1_config_dvp(dev);
 		dpcl |= CIF_VI_DPCL_IF_SEL_PARALLEL;
-	} else if (sensor->mbus.type == V4L2_MBUS_CSI2) {
+	} else if (sensor->mbus.type == V4L2_MBUS_CSI2_DPHY) {
 		ret = rkisp1_config_mipi(dev);
 		dpcl |= CIF_VI_DPCL_IF_SEL_MIPI;
 	}
@@ -411,7 +411,7 @@ static int rkisp1_isp_start(struct rkisp1_device *dev)
 		 dev->stream[RKISP1_STREAM_MP].state);
 
 	/* Activate MIPI */
-	if (sensor->mbus.type == V4L2_MBUS_CSI2) {
+	if (sensor->mbus.type == V4L2_MBUS_CSI2_DPHY) {
 		val = readl(base + CIF_MIPI_CTRL);
 		writel(val | CIF_MIPI_CTRL_OUTPUT_ENA, base + CIF_MIPI_CTRL);
 	}

@@ -697,7 +697,7 @@ static int rockchip_mipidphy_fwnode_parse(struct device *dev,
 			container_of(asd, struct sensor_async_subdev, asd);
 	struct v4l2_mbus_config *config = &s_asd->mbus;
 
-	if (vep->bus_type != V4L2_MBUS_CSI2) {
+	if (vep->bus_type != V4L2_MBUS_CSI2_DPHY) {
 		dev_err(dev, "Only CSI2 bus type is currently supported\n");
 		return -EINVAL;
 	}
@@ -707,7 +707,7 @@ static int rockchip_mipidphy_fwnode_parse(struct device *dev,
 		return -EINVAL;
 	}
 
-	config->type = V4L2_MBUS_CSI2;
+	config->type = V4L2_MBUS_CSI2_DPHY;
 	config->flags = vep->bus.mipi_csi2.flags;
 	s_asd->lanes = vep->bus.mipi_csi2.num_data_lanes;
 
@@ -745,6 +745,8 @@ static int rockchip_mipidphy_media_init(struct mipidphy_priv *priv)
 	if (ret < 0)
 		return ret;
 
+	v4l2_async_notifier_init(&priv->notifier);
+
 	ret = v4l2_async_notifier_parse_fwnode_endpoints_by_port(
 		priv->dev, &priv->notifier,
 		sizeof(struct sensor_async_subdev), 0,
@@ -752,7 +754,7 @@ static int rockchip_mipidphy_media_init(struct mipidphy_priv *priv)
 	if (ret < 0)
 		return ret;
 
-	if (!priv->notifier.num_subdevs)
+	if (list_empty(&priv->notifier.asd_list))
 		return -ENODEV;	/* no endpoint */
 
 	priv->sd.subdev_notifier = &priv->notifier;
