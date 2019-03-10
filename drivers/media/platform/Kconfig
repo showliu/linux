@@ -111,6 +111,7 @@ config VIDEO_ROCKCHIP_ISP1
 	depends on VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
 	depends on ARCH_ROCKCHIP || COMPILE_TEST
 	select VIDEOBUF2_DMA_CONTIG
+	select VIDEOBUF2_VMALLOC
 	select V4L2_FWNODE
 	default n
 	---help---
