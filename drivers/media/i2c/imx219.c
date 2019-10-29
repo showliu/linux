@@ -7,6 +7,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+#define DEBUG
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
@@ -164,6 +165,60 @@ static const struct imx219_reg imx219_init_tab_1920_1080_30fps[] = {
 	{IMX219_TABLE_END, 0x00}
 };
 
+static const struct imx219_reg imx219_init_tab_1640_1232_30fps_binned[] = {
+	{0x30eb, 0x0c},
+	{0x30eb, 0x05},
+	{0x300a, 0xff},
+	{0x300b, 0xff},
+	{0x30eb, 0x05},
+	{0x30eb, 0x09},
+	{0x0114, 0x01},
+	{0x0128, 0x00},
+	{0x012a, 0x18},
+	{0x012b, 0x00},
+	{0x0164, 0x00},
+	{0x0165, 0x00},
+	{0x0166, 0x0c},
+	{0x0167, 0xcf},
+	{0x0168, 0x00},
+	{0x0169, 0x00},
+	{0x016a, 0x09},
+	{0x016b, 0x9f},
+	{0x016c, 0x06},
+	{0x016d, 0x68},
+	{0x016e, 0x04},
+	{0x016f, 0xd0},
+	{0x0170, 0x01},
+	{0x0171, 0x01},
+	{0x0174, 0x01},
+	{0x0175, 0x01},
+	{0x018c, 0x0a},
+	{0x018d, 0x0a},
+	{0x0301, 0x05},
+	{0x0303, 0x01},
+	{0x0304, 0x03},
+	{0x0305, 0x03},
+	{0x0306, 0x00},
+	{0x0307, 0x39},
+	{0x0309, 0x0a},
+	{0x030b, 0x01},
+	{0x030c, 0x00},
+	{0x030d, 0x72},
+	{0x455e, 0x00},
+	{0x471e, 0x4b},
+	{0x4767, 0x0f},
+	{0x4750, 0x14},
+	{0x4540, 0x00},
+	{0x47b4, 0x14},
+	{0x4713, 0x30},
+	{0x478b, 0x10},
+	{0x478f, 0x10},
+	{0x4793, 0x10},
+	{0x4797, 0x0e},
+	{0x479b, 0x0e},
+	{IMX219_TABLE_END, 0x00}
+};
+
 static const struct imx219_reg start[] = {
 	{0x0100, 0x01},		/* mode select streaming on */
 	{IMX219_TABLE_END, 0x00}
@@ -237,6 +292,14 @@ struct imx219 {
 
 static const struct imx219_mode supported_modes[] = {
 	{
+		.width = 3280,
+		.height = 2464,
+		.max_fps = 21,
+		.hts_def = 0x0d78 - IMX219_EXP_LINES_MARGIN,
+		.vts_def = 0x09c4,
+		.reg_list = imx219_init_tab_3280_2464_21fps,
+	},
+	{
 		.width = 1920,
 		.height = 1080,
 		.max_fps = 30,
@@ -245,13 +308,13 @@ static const struct imx219_mode supported_modes[] = {
 		.reg_list = imx219_init_tab_1920_1080_30fps,
 	},
 	{
-		.width = 3280,
-		.height = 2464,
-		.max_fps = 21,
+		.width = 1640,
+		.height = 1232,
+		.max_fps = 30,
 		.hts_def = 0x0d78 - IMX219_EXP_LINES_MARGIN,
-		.vts_def = 0x09c4,
-		.reg_list = imx219_init_tab_3280_2464_21fps,
-	},
+		.vts_def = 0x06e3,
+		.reg_list = imx219_init_tab_1640_1232_30fps_binned,
+	}
 };
 
 static struct imx219 *to_imx219(const struct i2c_client *client)
@@ -611,6 +674,24 @@ static int imx219_s_ctrl(struct v4l2_ctrl *ctrl)
 	return 0;
 }
 
+static int imx219_enum_frame_size(struct v4l2_subdev *sd,
+				  struct v4l2_subdev_pad_config *cfg,
+				  struct v4l2_subdev_frame_size_enum *fse)
+{
+	if (fse->index >= ARRAY_SIZE(supported_modes))
+		return -EINVAL;
+
+	if (fse->code != MEDIA_BUS_FMT_SBGGR10_1X10)
+		return -EINVAL;
+
+	fse->min_width = supported_modes[fse->index].width;
+	fse->max_width = fse->min_width;
+	fse->min_height = supported_modes[fse->index].height;
+	fse->max_height = fse->min_height;
+
+	return 0;
+}
+
 static int imx219_enum_mbus_code(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_pad_config *cfg,
 				 struct v4l2_subdev_mbus_code_enum *code)
@@ -699,13 +780,29 @@ static int imx219_get_fmt(struct v4l2_subdev *sd,
 	struct imx219 *priv = to_imx219(client);
 	const struct imx219_mode *mode = priv->cur_mode;
 
-	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY)
-		return 0;
+	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
+		fmt->format = *v4l2_subdev_get_try_format(sd, cfg,
+							  fmt->pad);
+	} else {
+		fmt->format.width = mode->width;
+		fmt->format.height = mode->height;
+		fmt->format.code = MEDIA_BUS_FMT_SRGGB10_1X10;
+		fmt->format.field = V4L2_FIELD_NONE;
+	}
 
-	fmt->format.width = mode->width;
-	fmt->format.height = mode->height;
-	fmt->format.code = MEDIA_BUS_FMT_SRGGB10_1X10;
-	fmt->format.field = V4L2_FIELD_NONE;
+	return 0;
+}
+
+static int imx219_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
+{
+	struct v4l2_mbus_framefmt *try_fmt =
+		v4l2_subdev_get_try_format(sd, fh->pad, 0);
+
+	/* Initialize try_fmt */
+	try_fmt->width = supported_modes[0].width;
+	try_fmt->height = supported_modes[0].height;
+	try_fmt->code = MEDIA_BUS_FMT_SBGGR10_1X10;
+	try_fmt->field = V4L2_FIELD_NONE;
 
 	return 0;
 }
@@ -723,12 +820,17 @@ static const struct v4l2_subdev_pad_ops imx219_subdev_pad_ops = {
 	.enum_mbus_code = imx219_enum_mbus_code,
 	.set_fmt = imx219_set_fmt,
 	.get_fmt = imx219_get_fmt,
+	.enum_frame_size = imx219_enum_frame_size,
 };
 
 static struct v4l2_subdev_ops imx219_subdev_ops = {
 	.core = &imx219_subdev_core_ops,
 	.video = &imx219_subdev_video_ops,
 	.pad = &imx219_subdev_pad_ops,
+};
+
+static const struct v4l2_subdev_internal_ops imx219_internal_ops = {
+	.open = imx219_open,
 };
 
 static const struct v4l2_ctrl_ops imx219_ctrl_ops = {
@@ -743,6 +845,7 @@ static int imx219_video_probe(struct i2c_client *client)
 	u16 chip_id;
 	int ret;
 
+	dev_info(&client->dev, "%s start\n", __func__);
 	ret = imx219_s_power(subdev, 1);
 	if (ret < 0)
 		return ret;
@@ -889,6 +992,7 @@ static int imx219_probe(struct i2c_client *client,
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
 	int ret;
 
+	dev_info(&client->dev, "%s start\n", __func__);
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE_DATA)) {
 		dev_warn(&adapter->dev,
 			 "I2C-Adapter doesn't support I2C_FUNC_SMBUS_BYTE\n");
@@ -927,6 +1031,8 @@ static int imx219_probe(struct i2c_client *client,
 	if (ret < 0)
 		return ret;
 
+	priv->subdev.internal_ops = &imx219_internal_ops;
+
 	priv->subdev.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 	priv->pad.flags = MEDIA_PAD_FL_SOURCE;
 	priv->subdev.entity.function = MEDIA_ENT_F_CAM_SENSOR;
@@ -937,7 +1043,7 @@ static int imx219_probe(struct i2c_client *client,
 	ret = v4l2_async_register_subdev(&priv->subdev);
 	if (ret < 0)
 		return ret;
-
+	dev_info(&client->dev, "%s done\n", __func__);
 	return ret;
 }
 
