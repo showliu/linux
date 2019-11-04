@@ -1133,10 +1133,10 @@
 	status = "disabled";
  };
 
-&route_dsi1{
-	status = "okay";
-	connect = <&vopl_out_dsi1>;
-};
+//&route_dsi1{
+//	status = "okay";
+//	connect = <&vopl_out_dsi1>;
+//};
 
 &hdmi_in_vopl {
 	status = "disabled";
